@@ -36,6 +36,12 @@ static void disconnect_std_streams(int dev_null_r, int dev_null_w)
 
 #define DEFAULT_UMASK 0022
 
+#ifdef __FreeBSD__
+#define warn_on_chmod_failure(x) errno != EINVAL
+#else
+#define warn_on_chmod_failure(x) true
+#endif
+
 int main(int argc, char *argv[])
 {
 	setlocale(LC_ALL, "");
@@ -240,21 +246,21 @@ int main(int argc, char *argv[])
 				workerfd_stdin = dev_null_r;
 			if (dup2(workerfd_stdin, STDIN_FILENO) < 0)
 				_pexit("Failed to dup over stdin");
-			if (workerfd_stdin != dev_null_r && isatty(workerfd_stdin) && fchmod(STDIN_FILENO, 0777) < 0)
+			if (workerfd_stdin != dev_null_r && fchmod(STDIN_FILENO, 0777) < 0 && warn_on_chmod_failure(workerfd_stdin))
 				nwarn("Failed to chmod stdin");
 
 			if (workerfd_stdout < 0)
 				workerfd_stdout = dev_null_w;
 			if (dup2(workerfd_stdout, STDOUT_FILENO) < 0)
 				_pexit("Failed to dup over stdout");
-			if (workerfd_stdout != dev_null_w && isatty(workerfd_stdout) && fchmod(STDOUT_FILENO, 0777) < 0)
+			if (workerfd_stdout != dev_null_w && fchmod(STDOUT_FILENO, 0777) < 0 && warn_on_chmod_failure(workerfd_stdout))
 				nwarn("Failed to chmod stdout");
 
 			if (workerfd_stderr < 0)
 				workerfd_stderr = workerfd_stdout;
 			if (dup2(workerfd_stderr, STDERR_FILENO) < 0)
 				_pexit("Failed to dup over stderr");
-			if (workerfd_stderr != dev_null_w && isatty(workerfd_stderr) && fchmod(STDERR_FILENO, 0777) < 0)
+			if (workerfd_stderr != dev_null_w && fchmod(STDERR_FILENO, 0777) < 0 && warn_on_chmod_failure(workerfd_stderr))
 				nwarn("Failed to chmod stderr");
 		}
 		/* If LISTEN_PID env is set, we need to set the LISTEN_PID
